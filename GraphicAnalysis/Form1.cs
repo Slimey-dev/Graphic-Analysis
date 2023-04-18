@@ -20,7 +20,9 @@ public partial class Form1 : Form
 
     private readonly Button _setMeter;
     private readonly TextBox _textBox1;
+    private List<Point> _points = new();
     private SelectSelect _state;
+    private Bitmap bmp;
     private float counter;
     private Point endPoint = new(-1, -1);
     private float koeficient;
@@ -95,6 +97,9 @@ public partial class Form1 : Form
         var filename = _fileDialog.FileName;
         _pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
         _pictureBox1.ImageLocation = filename;
+        _pictureBox1.Load();
+        bmp = new Bitmap(_pictureBox1.Width, _pictureBox1.Height);
+        _pictureBox1.DrawToBitmap(bmp, _pictureBox1.ClientRectangle);
     }
 
     private void FileSelectOnClick(object? sender, EventArgs e)
@@ -144,6 +149,15 @@ public partial class Form1 : Form
             //_debug.Text = Convert.ToString(meterLenght);
         }
 
+        if (_state == SelectSelect.Polygon)
+        {
+            var cursor = Cursor.Position;
+            var pointClick = _pictureBox1.PointToClient(new Point(cursor.X, cursor.Y));
+            _points = GetPointFromLineIntersection(pointClick);
+        }
+
+        if (endPoint.X != -1) _state = SelectSelect.Polygon;
+
 
         _pictureBox1.Invalidate();
     }
@@ -152,12 +166,97 @@ public partial class Form1 : Form
     {
         var graphics = e.Graphics;
         var pen = new Pen(Color.Aqua);
-        if (_state == SelectSelect.Line && endPoint.X != -1) graphics.DrawLine(pen, startPoint, endPoint);
+        if (endPoint.X != -1) graphics.DrawLine(pen, startPoint, endPoint);
+        if (_state == SelectSelect.Polygon)
+            foreach (var point in _points)
+                graphics.FillEllipse(Brushes.Crimson, point.X - 5f, point.Y - 5f, 10f, 10f);
     }
 
 
     private void SetMeterClick(object? sender, EventArgs e)
     {
         _state = SelectSelect.Line;
+    }
+
+    private List<Point> GetPointFromLineIntersection(Point point)
+    {
+        var pointList = new List<Point>();
+        var found = false;
+        var i = 0;
+        var foundPoint = false;
+        var currentClick = new Point(point.X, point.Y);
+        if (!foundPoint)
+        {
+            var colorL = Color.White;
+            var colorT = Color.White;
+            var colorB = Color.White;
+            var colorR = Color.White;
+
+            var pointL = new Point();
+            var pointT = new Point();
+            var pointB = new Point();
+            var pointR = new Point();
+
+
+            var foundL = false;
+            var foundR = false;
+            var foundB = false;
+            var foundT = false;
+            while (!foundL && colorL.ToArgb() == Color.White.ToArgb())
+            {
+                colorL = bmp.GetPixel(currentClick.X - i, currentClick.Y);
+                i++;
+                if (colorL.ToArgb() != Color.White.ToArgb())
+                {
+                    foundL = true;
+                    pointL = new Point(currentClick.X - i, currentClick.Y);
+                }
+            }
+
+            i = 0;
+            while (!foundT && colorT.ToArgb() == Color.White.ToArgb())
+            {
+                colorT = bmp.GetPixel(currentClick.X, currentClick.Y - i);
+                i++;
+                if (colorT.ToArgb() != Color.White.ToArgb())
+                {
+                    foundT = true;
+                    pointT = new Point(currentClick.X, currentClick.Y - i);
+                }
+            }
+
+            i = 0;
+            while (!foundR && colorR.ToArgb() == Color.White.ToArgb())
+            {
+                colorR = bmp.GetPixel(currentClick.X + i, currentClick.Y);
+                i++;
+                if (colorR.ToArgb() != Color.White.ToArgb())
+                {
+                    foundR = true;
+                    pointR = new Point(currentClick.X + i, currentClick.Y);
+                }
+            }
+
+            i = 0;
+            while (!foundB && colorB.ToArgb() == Color.White.ToArgb())
+            {
+                colorB = bmp.GetPixel(currentClick.X, currentClick.Y + i);
+                i++;
+                if (colorB.ToArgb() != Color.White.ToArgb())
+                {
+                    foundB = true;
+                    pointB = new Point(currentClick.X, currentClick.Y + i);
+                }
+            }
+
+            i = 0;
+            pointList.Add(pointB);
+            pointList.Add(pointR);
+            pointList.Add(pointT);
+            pointList.Add(pointL);
+            foundPoint = true;
+        }
+
+        return pointList;
     }
 }
